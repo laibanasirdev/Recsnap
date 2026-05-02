@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>RecSnap</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 320px;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+    }
+
+    /* Header */
+    .header {
+      background: #16213e;
+      padding: 13px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #0f3460;
+    }
+    .logo {
+      width: 28px; height: 28px;
+      background: #e94560;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .logo svg { width: 14px; height: 14px; fill: white; }
+    .header h1 { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: 0.3px; }
+    .header .version { font-size: 10px; color: #555; margin-left: auto; }
+
+    /* Content */
+    .content { padding: 14px 14px 10px; }
+
+    /* Source tabs */
+    .source-tabs {
+      display: flex;
+      background: #0f1923;
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+      margin-bottom: 12px;
+    }
+    .source-tab {
+      flex: 1; padding: 7px 4px;
+      border: none; background: transparent;
+      color: #777; border-radius: 6px;
+      cursor: pointer; font-size: 11px; font-weight: 500;
+      transition: all 0.15s;
+    }
+    .source-tab.active { background: #e94560; color: #fff; }
+    .source-tab:hover:not(.active) { color: #bbb; background: #1a2535; }
+    .source-tab:disabled { pointer-events: none; opacity: 0.4; }
+
+    /* Options row */
+    .options-row {
+      display: flex; gap: 8px;
+      margin-bottom: 12px; align-items: center;
+    }
+    .select-wrap { flex: 1; position: relative; }
+    .select-wrap select {
+      width: 100%;
+      padding: 8px 26px 8px 10px;
+      background: #0f1923; color: #e0e0e0;
+      border: 1px solid #1e3050; border-radius: 7px;
+      appearance: none; font-size: 12px;
+      cursor: pointer; outline: none;
+    }
+    .select-wrap select:disabled { opacity: 0.4; cursor: not-allowed; }
+    .select-wrap::after {
+      content: '▾'; position: absolute;
+      right: 9px; top: 50%; transform: translateY(-50%);
+      pointer-events: none; color: #555; font-size: 11px;
+    }
+    .mic-btn {
+      padding: 8px 10px;
+      background: #0f1923; border: 1px solid #1e3050;
+      border-radius: 7px; color: #777;
+      cursor: pointer; font-size: 11px;
+      display: flex; align-items: center; gap: 4px;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .mic-btn.active { border-color: #e94560; color: #e94560; }
+    .mic-btn:hover:not(:disabled) { background: #1a2535; }
+    .mic-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Timer */
+    .timer-display {
+      text-align: center; padding: 14px 0 8px;
+      display: none;
+    }
+    .timer-display.visible { display: block; }
+    .timer-value {
+      font-size: 38px; font-weight: 300;
+      letter-spacing: 5px; color: #fff;
+      font-variant-numeric: tabular-nums;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    .rec-dot {
+      width: 10px; height: 10px;
+      background: #e94560; border-radius: 50%;
+      animation: pulse 1s infinite; flex-shrink: 0;
+    }
+    .rec-dot.paused { background: #f0a500; animation: none; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.25; }
+    }
+    .timer-label { font-size: 11px; color: #555; margin-top: 5px; }
+
+    /* Buttons */
+    .btn-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .btn {
+      flex: 1; padding: 11px 8px;
+      border: none; border-radius: 8px;
+      cursor: pointer; font-size: 12px; font-weight: 600;
+      transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+    }
+    .btn-start { background: #e94560; color: #fff; }
+    .btn-start:hover { background: #c73652; }
+    .btn-stop { background: transparent; color: #e94560; border: 1px solid #e94560; }
+    .btn-stop:hover { background: #2a1525; }
+    .btn-pause { background: transparent; color: #f0a500; border: 1px solid #f0a500; }
+    .btn-pause:hover { background: #25200f; }
+
+    /* Status */
+    .status-msg {
+      text-align: center; font-size: 11px; color: #555;
+      margin-bottom: 12px; min-height: 16px; line-height: 1.4;
+    }
+    .status-msg.error { color: #e94560; }
+    .status-msg.success { color: #4caf50; }
+
+    /* History */
+    .history-section { border-top: 1px solid #1a2a40; padding-top: 12px; }
+    .history-title {
+      font-size: 10px; color: #444;
+      text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 8px;
+    }
+    .history-list {
+      display: flex; flex-direction: column; gap: 5px;
+      max-height: 130px; overflow-y: auto;
+    }
+    .history-list::-webkit-scrollbar { width: 3px; }
+    .history-list::-webkit-scrollbar-track { background: transparent; }
+    .history-list::-webkit-scrollbar-thumb { background: #1e3050; border-radius: 2px; }
+    .history-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 7px 9px; background: #0f1923;
+      border-radius: 7px; border: 1px solid #182435;
+    }
+    .history-icon { font-size: 15px; }
+    .history-info { flex: 1; min-width: 0; }
+    .history-name {
+      font-size: 11px; color: #bbb;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .history-meta { font-size: 10px; color: #444; margin-top: 2px; }
+    .history-empty { font-size: 11px; color: #333; text-align: center; padding: 10px 0; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="#e94560"/></svg>
+  </div>
+  <h1>RecSnap</h1>
+  <span class="version">v1.0</span>
+</div>
+
+<div class="content">
+
+  <div class="source-tabs" id="sourceTabs">
+    <button class="source-tab active" data-source="screen">🖥 Screen</button>
+    <button class="source-tab" data-source="window">🪟 Window</button>
+    <button class="source-tab" data-source="tab">📑 Tab</button>
+  </div>
+
+  <div class="options-row">
+    <div class="select-wrap">
+      <select id="qualitySelect">
+        <option value="1080">1080p HD</option>
+        <option value="720" selected>720p</option>
+        <option value="480">480p</option>
+      </select>
+    </div>
+    <button class="mic-btn" id="micBtn">🎙 Mic Off</button>
+  </div>
+
+  <div class="timer-display" id="timerDisplay">
+    <div class="timer-value">
+      <span class="rec-dot" id="recDot"></span>
+      <span id="timerValue">00:00</span>
+    </div>
+    <div class="timer-label" id="timerLabel">Recording...</div>
+  </div>
+
+  <div class="btn-row" id="btnRow">
+    <button class="btn btn-start" id="startBtn">▶ Start Recording</button>
+  </div>
+
+  <div class="status-msg" id="statusMsg">Choose a source and hit Start</div>
+
+  <div class="history-section">
+    <div class="history-title">This Session</div>
+    <div class="history-list" id="historyList">
+      <div class="history-empty">No recordings yet</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const qualityMap = {
+    '1080': { width: 1920, height: 1080 },
+    '720':  { width: 1280, height: 720  },
+    '480':  { width: 854,  height: 480  },
+  };
+
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let captureStream = null;
+  let micStream = null;
+  let audioCtx = null;
+  let timerInterval = null;
+  let elapsed = 0;
+  let micEnabled = false;
+  let selectedSource = 'screen';
+  let recordings = [];
+
+  const $ = id => document.getElementById(id);
+
+  // Source tab clicks
+  $('sourceTabs').addEventListener('click', e => {
+    const tab = e.target.closest('.source-tab');
+    if (!tab || tab.disabled) return;
+    $('sourceTabs').querySelectorAll('.source-tab').forEach(b => b.classList.remove('active'));
+    tab.classList.add('active');
+    selectedSource = tab.dataset.source;
+  });
+
+  // Mic toggle
+  $('micBtn').addEventListener('click', () => {
+    micEnabled = !micEnabled;
+    $('micBtn').classList.toggle('active', micEnabled);
+    $('micBtn').textContent = micEnabled ? '🎙 Mic On' : '🎙 Mic Off';
+  });
+
+  $('startBtn').addEventListener('click', startRecording);
+
+  async function startRecording() {
+    setStatus('');
+    const quality = qualityMap[$('qualitySelect').value];
+    const surfaceMap = { screen: 'monitor', window: 'window', tab: 'browser' };
+
+    let displayStream;
+    try {
+      displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          displaySurface: surfaceMap[selectedSource],
+          width: { ideal: quality.width },
+          height: { ideal: quality.height },
+          frameRate: { ideal: 30 },
+        },
+        audio: true,
+      });
+    } catch (err) {
+      const msg = err.name === 'NotAllowedError'
+        ? 'Screen share cancelled or denied.'
+        : 'Could not start screen capture.';
+      setStatus(msg, 'error');
+      return;
+    }
+
+    let finalStream = displayStream;
+
+    if (micEnabled) {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        audioCtx = new AudioContext();
+        const dest = audioCtx.createMediaStreamDestination();
+
+        const sysTracks = displayStream.getAudioTracks();
+        if (sysTracks.length > 0) {
+          audioCtx.createMediaStreamSource(new MediaStream(sysTracks)).connect(dest);
+        }
+        audioCtx.createMediaStreamSource(micStream).connect(dest);
+
+        finalStream = new MediaStream([
+          ...displayStream.getVideoTracks(),
+          ...dest.stream.getAudioTracks(),
+        ]);
+      } catch {
+        setStatus('Mic unavailable — recording without microphone.', 'error');
+      }
+    }
+
+    captureStream = finalStream;
+    recordedChunks = [];
+
+    const mimeType = pickMimeType();
+    mediaRecorder = new MediaRecorder(finalStream, mimeType ? { mimeType } : {});
+
+    mediaRecorder.ondataavailable = e => {
+      if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+    };
+    mediaRecorder.onstop = finalize;
+
+    // If user clicks "Stop sharing" in browser chrome
+    displayStream.getVideoTracks()[0].addEventListener('ended', () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') stopRecording();
+    });
+
+    mediaRecorder.start(500);
+    elapsed = 0;
+    startTimer();
+    setRecordingUI(true);
+    setStatus('Recording in progress...');
+  }
+
+  function stopRecording() {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+    mediaRecorder.stop();
+    cleanupStreams();
+    stopTimer();
+    setRecordingUI(false);
+    setStatus('Saving...');
+  }
+
+  function togglePause() {
+    if (!mediaRecorder) return;
+    const pauseBtn = $('pauseBtn');
+    if (mediaRecorder.state === 'recording') {
+      mediaRecorder.pause();
+      clearInterval(timerInterval);
+      timerInterval = null;
+      $('recDot').classList.add('paused');
+      $('timerLabel').textContent = 'Paused';
+      pauseBtn.textContent = '▶ Resume';
+    } else if (mediaRecorder.state === 'paused') {
+      mediaRecorder.resume();
+      timerInterval = setInterval(tick, 1000);
+      $('recDot').classList.remove('paused');
+      $('timerLabel').textContent = 'Recording...';
+      pauseBtn.textContent = '⏸ Pause';
+    }
+  }
+
+  function finalize() {
+    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `RecSnap_${ts}.webm`;
+
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+
+    const duration = fmtTime(elapsed);
+    const size = (blob.size / 1048576).toFixed(1);
+    recordings.unshift({ filename, duration, size });
+    renderHistory();
+    setStatus(`Saved: ${filename}`, 'success');
+    elapsed = 0;
+    mediaRecorder = null;
+  }
+
+  function cleanupStreams() {
+    if (captureStream) { captureStream.getTracks().forEach(t => t.stop()); captureStream = null; }
+    if (micStream)     { micStream.getTracks().forEach(t => t.stop());     micStream = null;     }
+    if (audioCtx)      { audioCtx.close(); audioCtx = null; }
+  }
+
+  function tick() {
+    elapsed++;
+    $('timerValue').textContent = fmtTime(elapsed);
+  }
+
+  function startTimer() {
+    $('timerValue').textContent = '00:00';
+    timerInterval = setInterval(tick, 1000);
+  }
+
+  function stopTimer() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+
+  function setRecordingUI(recording) {
+    $('timerDisplay').classList.toggle('visible', recording);
+    $('qualitySelect').disabled = recording;
+    $('micBtn').disabled = recording;
+    $('sourceTabs').querySelectorAll('.source-tab').forEach(b => b.disabled = recording);
+
+    if (recording) {
+      $('btnRow').innerHTML = `
+        <button class="btn btn-pause" id="pauseBtn" onclick="togglePause()">⏸ Pause</button>
+        <button class="btn btn-stop" onclick="stopRecording()">■ Stop</button>
+      `;
+    } else {
+      $('btnRow').innerHTML = `<button class="btn btn-start" id="startBtn">▶ Start Recording</button>`;
+      $('startBtn').addEventListener('click', startRecording);
+    }
+  }
+
+  function setStatus(msg, type = '') {
+    const el = $('statusMsg');
+    el.textContent = msg;
+    el.className = 'status-msg' + (type ? ` ${type}` : '');
+  }
+
+  function renderHistory() {
+    if (!recordings.length) {
+      $('historyList').innerHTML = '<div class="history-empty">No recordings yet</div>';
+      return;
+    }
+    $('historyList').innerHTML = recordings.map(r => `
+      <div class="history-item">
+        <span class="history-icon">🎬</span>
+        <div class="history-info">
+          <div class="history-name" title="${r.filename}">${r.filename}</div>
+          <div class="history-meta">${r.duration} &middot; ${r.size} MB</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function fmtTime(s) {
+    return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  function pickMimeType() {
+    const candidates = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm;codecs=h264,opus',
+      'video/webm',
+    ];
+    return candidates.find(t => MediaRecorder.isTypeSupported(t)) || '';
+  }
+</script>
+</body>
+</html>
