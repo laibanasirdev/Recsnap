@@ -8,11 +8,16 @@
 
     body {
       width: 320px;
+      max-height: 580px;
+      overflow-y: auto;
       background: #1a1a2e;
       color: #e0e0e0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-size: 13px;
     }
+    body::-webkit-scrollbar { width: 4px; }
+    body::-webkit-scrollbar-track { background: #0f1923; }
+    body::-webkit-scrollbar-thumb { background: #1e3050; border-radius: 2px; }
 
     /* Header */
     .header {
@@ -22,6 +27,7 @@
       align-items: center;
       gap: 10px;
       border-bottom: 1px solid #0f3460;
+      position: sticky; top: 0; z-index: 10;
     }
     .logo {
       width: 28px; height: 28px;
@@ -90,10 +96,7 @@
     .mic-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
     /* Timer */
-    .timer-display {
-      text-align: center; padding: 14px 0 8px;
-      display: none;
-    }
+    .timer-display { text-align: center; padding: 14px 0 8px; display: none; }
     .timer-display.visible { display: block; }
     .timer-value {
       font-size: 38px; font-weight: 300;
@@ -107,10 +110,7 @@
       animation: pulse 1s infinite; flex-shrink: 0;
     }
     .rec-dot.paused { background: #f0a500; animation: none; }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.25; }
-    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
     .timer-label { font-size: 11px; color: #555; margin-top: 5px; }
 
     /* Buttons */
@@ -143,19 +143,13 @@
       font-size: 10px; color: #444;
       text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 8px;
     }
-    .history-list {
-      display: flex; flex-direction: column; gap: 5px;
-      max-height: 130px; overflow-y: auto;
-    }
-    .history-list::-webkit-scrollbar { width: 3px; }
-    .history-list::-webkit-scrollbar-track { background: transparent; }
-    .history-list::-webkit-scrollbar-thumb { background: #1e3050; border-radius: 2px; }
+    .history-list { display: flex; flex-direction: column; gap: 7px; }
     .history-item {
-      display: flex; align-items: center; gap: 9px;
-      padding: 7px 9px; background: #0f1923;
-      border-radius: 7px; border: 1px solid #182435;
+      display: flex; align-items: flex-start; gap: 9px;
+      padding: 9px 10px; background: #0f1923;
+      border-radius: 8px; border: 1px solid #182435;
     }
-    .history-icon { font-size: 15px; }
+    .history-icon { font-size: 15px; padding-top: 1px; flex-shrink: 0; }
     .history-info { flex: 1; min-width: 0; }
     .history-name {
       font-size: 11px; color: #bbb;
@@ -163,6 +157,53 @@
     }
     .history-meta { font-size: 10px; color: #444; margin-top: 2px; }
     .history-empty { font-size: 11px; color: #333; text-align: center; padding: 10px 0; }
+
+    /* Transcription UI */
+    .transcribe-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-top: 7px; padding: 4px 9px;
+      background: transparent; border: 1px solid #1e3a55;
+      border-radius: 5px; color: #5a8fbb;
+      font-size: 10px; cursor: pointer; transition: all 0.15s;
+    }
+    .transcribe-btn:hover { border-color: #3a6090; color: #8abcde; background: #0a1520; }
+
+    .transcript-status {
+      margin-top: 7px; font-size: 10px; color: #f0a500;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .spinner {
+      width: 10px; height: 10px; flex-shrink: 0;
+      border: 1.5px solid #f0a500; border-top-color: transparent;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .transcript-text {
+      margin-top: 7px; font-size: 10px; color: #99b0c8;
+      line-height: 1.55; background: #070e16;
+      border: 1px solid #152030; border-radius: 6px;
+      padding: 7px 8px; max-height: 80px;
+      overflow-y: auto; white-space: pre-wrap; word-break: break-word;
+    }
+    .transcript-text::-webkit-scrollbar { width: 3px; }
+    .transcript-text::-webkit-scrollbar-thumb { background: #1e3050; border-radius: 2px; }
+
+    .summarise-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-top: 7px; padding: 5px 10px;
+      background: #e94560; border: none; border-radius: 6px;
+      color: #fff; font-size: 10px; font-weight: 600;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .summarise-btn:hover { background: #c73652; }
+
+    .transcript-error { margin-top: 7px; font-size: 10px; color: #e94560; }
+    .transcript-error button {
+      background: none; border: none; color: #5a8fbb;
+      font-size: 10px; cursor: pointer; text-decoration: underline;
+      padding: 0; margin-left: 4px;
+    }
   </style>
 </head>
 <body>
@@ -172,7 +213,7 @@
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="#e94560"/></svg>
   </div>
   <h1>RecSnap</h1>
-  <span class="version">v1.0</span>
+  <span class="version">v1.1</span>
 </div>
 
 <div class="content">
@@ -237,7 +278,6 @@
 
   const $ = id => document.getElementById(id);
 
-  // Source tab clicks
   $('sourceTabs').addEventListener('click', e => {
     const tab = e.target.closest('.source-tab');
     if (!tab || tab.disabled) return;
@@ -246,7 +286,6 @@
     selectedSource = tab.dataset.source;
   });
 
-  // Mic toggle
   $('micBtn').addEventListener('click', () => {
     micEnabled = !micEnabled;
     $('micBtn').classList.toggle('active', micEnabled);
@@ -286,13 +325,11 @@
         micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         audioCtx = new AudioContext();
         const dest = audioCtx.createMediaStreamDestination();
-
         const sysTracks = displayStream.getAudioTracks();
         if (sysTracks.length > 0) {
           audioCtx.createMediaStreamSource(new MediaStream(sysTracks)).connect(dest);
         }
         audioCtx.createMediaStreamSource(micStream).connect(dest);
-
         finalStream = new MediaStream([
           ...displayStream.getVideoTracks(),
           ...dest.stream.getAudioTracks(),
@@ -307,13 +344,9 @@
 
     const mimeType = pickMimeType();
     mediaRecorder = new MediaRecorder(finalStream, mimeType ? { mimeType } : {});
-
-    mediaRecorder.ondataavailable = e => {
-      if (e.data && e.data.size > 0) recordedChunks.push(e.data);
-    };
+    mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
     mediaRecorder.onstop = finalize;
 
-    // If user clicks "Stop sharing" in browser chrome
     displayStream.getVideoTracks()[0].addEventListener('ended', () => {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') stopRecording();
     });
@@ -339,8 +372,7 @@
     const pauseBtn = $('pauseBtn');
     if (mediaRecorder.state === 'recording') {
       mediaRecorder.pause();
-      clearInterval(timerInterval);
-      timerInterval = null;
+      clearInterval(timerInterval); timerInterval = null;
       $('recDot').classList.add('paused');
       $('timerLabel').textContent = 'Paused';
       pauseBtn.textContent = '▶ Resume';
@@ -365,7 +397,7 @@
 
     const duration = fmtTime(elapsed);
     const size = (blob.size / 1048576).toFixed(1);
-    recordings.unshift({ filename, duration, size });
+    recordings.unshift({ filename, duration, size, blob, transcriptState: null });
     renderHistory();
     setStatus(`Saved: ${filename}`, 'success');
     elapsed = 0;
@@ -378,20 +410,9 @@
     if (audioCtx)      { audioCtx.close(); audioCtx = null; }
   }
 
-  function tick() {
-    elapsed++;
-    $('timerValue').textContent = fmtTime(elapsed);
-  }
-
-  function startTimer() {
-    $('timerValue').textContent = '00:00';
-    timerInterval = setInterval(tick, 1000);
-  }
-
-  function stopTimer() {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
+  function tick() { elapsed++; $('timerValue').textContent = fmtTime(elapsed); }
+  function startTimer() { $('timerValue').textContent = '00:00'; timerInterval = setInterval(tick, 1000); }
+  function stopTimer() { clearInterval(timerInterval); timerInterval = null; }
 
   function setRecordingUI(recording) {
     $('timerDisplay').classList.toggle('visible', recording);
@@ -416,21 +437,141 @@
     el.className = 'status-msg' + (type ? ` ${type}` : '');
   }
 
+  // ── Transcription ──────────────────────────────────────────────
+
+  async function startTranscription(i) {
+    const r = recordings[i];
+    if (!r || !r.blob) {
+      setStatus('Recording expired — keep popup open to transcribe.', 'error');
+      return;
+    }
+
+    r.transcriptState = 'loading';
+    r.transcriptMsg = 'Loading Whisper model...';
+    renderHistory();
+
+    try {
+      const { pipeline, env } = await import('./lib/transformers.min.js');
+
+      // Point WASM loader at CDN (binary fetch, not code execution — allowed in MV3)
+      env.backends.onnx.wasm.wasmPaths =
+        'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/';
+      env.allowRemoteModels = true;
+
+      const transcriber = await pipeline(
+        'automatic-speech-recognition',
+        'Xenova/whisper-tiny.en',
+        {
+          progress_callback: p => {
+            if (p.status === 'downloading') {
+              const pct = p.total ? `${Math.round(p.loaded / p.total * 100)}%` : '…';
+              r.transcriptMsg = `Downloading model: ${pct} (first run only)`;
+              renderHistory();
+            }
+          },
+        }
+      );
+
+      r.transcriptMsg = 'Transcribing audio…';
+      renderHistory();
+
+      const audio = await blobToFloat32Array(r.blob);
+
+      const result = await transcriber(audio, { language: 'english', task: 'transcribe' });
+      r.transcript = (result.text || '').trim() || '(no speech detected)';
+      r.transcriptState = 'done';
+      renderHistory();
+
+    } catch (err) {
+      console.error('Transcription failed:', err);
+      r.transcriptState = 'error';
+      r.transcriptMsg = err.message || 'Unknown error';
+      renderHistory();
+    }
+  }
+
+  async function blobToFloat32Array(blob) {
+    const arrayBuffer = await blob.arrayBuffer();
+    const ctx = new AudioContext();
+    let decoded;
+    try {
+      decoded = await ctx.decodeAudioData(arrayBuffer);
+    } catch {
+      await ctx.close();
+      throw new Error('No audio track found in this recording.');
+    }
+    await ctx.close();
+
+    const targetRate = 16000;
+    const offlineCtx = new OfflineAudioContext(1, Math.ceil(decoded.duration * targetRate), targetRate);
+    const src = offlineCtx.createBufferSource();
+    src.buffer = decoded;
+    src.connect(offlineCtx.destination);
+    src.start(0);
+    const rendered = await offlineCtx.startRendering();
+    return rendered.getChannelData(0);
+  }
+
+  function summariseWithAI(i) {
+    const r = recordings[i];
+    const prompt =
+      `Please summarise this screen recording transcript, highlighting the key points:\n\n${r.transcript}`;
+    navigator.clipboard.writeText(prompt)
+      .then(() => {
+        chrome.tabs.create({ url: 'https://claude.ai/new' });
+        setStatus('Transcript copied! Paste into Claude with Ctrl+V', 'success');
+      })
+      .catch(() => {
+        chrome.tabs.create({ url: 'https://claude.ai/new' });
+        setStatus('Opening Claude — paste transcript manually', '');
+      });
+  }
+
+  // ── Rendering ─────────────────────────────────────────────────
+
   function renderHistory() {
     if (!recordings.length) {
       $('historyList').innerHTML = '<div class="history-empty">No recordings yet</div>';
       return;
     }
-    $('historyList').innerHTML = recordings.map(r => `
+    $('historyList').innerHTML = recordings.map((r, i) => `
       <div class="history-item">
         <span class="history-icon">🎬</span>
         <div class="history-info">
-          <div class="history-name" title="${r.filename}">${r.filename}</div>
+          <div class="history-name" title="${esc(r.filename)}">${esc(r.filename)}</div>
           <div class="history-meta">${r.duration} &middot; ${r.size} MB</div>
+          ${transcriptBlock(r, i)}
         </div>
       </div>
     `).join('');
   }
+
+  function transcriptBlock(r, i) {
+    switch (r.transcriptState) {
+      case null:
+        return `<button class="transcribe-btn" onclick="startTranscription(${i})">🎤 Transcribe</button>`;
+      case 'loading':
+        return `<div class="transcript-status"><span class="spinner"></span>${esc(r.transcriptMsg)}</div>`;
+      case 'done':
+        return `
+          <div class="transcript-text">${esc(r.transcript)}</div>
+          <button class="summarise-btn" onclick="summariseWithAI(${i})">✨ Summarise with AI ↗</button>`;
+      case 'error':
+        return `<div class="transcript-error">
+          Failed: ${esc(r.transcriptMsg)}
+          <button onclick="startTranscription(${i})">Retry</button>
+        </div>`;
+      default: return '';
+    }
+  }
+
+  function esc(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────
 
   function fmtTime(s) {
     return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
